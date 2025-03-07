@@ -22,7 +22,6 @@ export default function Settings({
       onChangeAddress();
     } else if (input.toLowerCase() === 'r') {
       onChangeRpcUrl();
-      // Trigger a refetch when RPC URL is changed
     }
   });
 

@@ -34,6 +34,36 @@ pnpm build
 pnpm link --global
 ```
 
+## Environment Variables
+
+The application requires certain environment variables to be set. You can set them up in two ways:
+
+### Method 1: Using a .env file (Recommended for Development)
+
+Create a `.env` file in the project root:
+
+```bash
+WALLETCONNECT_PROJECT_ID=your_project_id
+```
+
+### Method 2: Setting Environment Variables Directly
+
+```bash
+# For Unix-like systems (Linux, macOS)
+export WALLETCONNECT_PROJECT_ID=your_project_id
+safe-terminal
+
+# For Windows (PowerShell)
+$env:WALLETCONNECT_PROJECT_ID="your_project_id"
+safe-terminal
+
+# Or inline with the command
+WALLETCONNECT_PROJECT_ID=your_project_id safe-terminal
+```
+
+Required variables:
+- `WALLETCONNECT_PROJECT_ID`: Your WalletConnect project ID (Get it from [WalletConnect Cloud](https://cloud.walletconnect.com/))
+
 ## Usage
 
 ```bash
@@ -78,13 +108,10 @@ Examples
 ```bash
 # Run in development mode with auto-reloading
 pnpm dev
+
+# Run with environment variables
+WALLETCONNECT_PROJECT_ID=your_project_id pnpm dev
 ```
-
-## Environment Variables
-
-The following environment variables are required:
-
-- `WALLETCONNECT_PROJECT_ID`: Your WalletConnect project ID
 
 ## License
 

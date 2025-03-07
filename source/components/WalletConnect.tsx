@@ -1,23 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { EthereumProvider } from '@walletconnect/ethereum-provider';
+import { provider } from '../cli.js';
 import qrcode from 'qrcode-terminal';
 
+// Debug logging
 // Initialize the WalletConnect provider
-const provider = await EthereumProvider.init({
-  projectId: process.env['WALLETCONNECT_PROJECT_ID']!,
-  metadata: {
-    name: 'My Website',
-    description: 'My Website Description',
-    url: 'https://mywebsite.com',
-    icons: ['https://avatars.githubusercontent.com/u/37784886']
-  },
-  showQrModal: false,
-  optionalChains: [1, 137, 8453],
-});
 
-// Export the provider for use in other components
-export { provider };
+
+  
 
 export default function WalletConnect() {
   const [qrCode, setQrCode] = useState<string>('');
@@ -25,6 +15,8 @@ export default function WalletConnect() {
   const [accounts, setAccounts] = useState<string[]>([]);
   const [chainId, setChainId] = useState<number | null>(null);
   const [error, setError] = useState('');
+
+  
 
   // Set up event listeners for WalletConnect
   useEffect(() => {
@@ -83,11 +75,11 @@ export default function WalletConnect() {
       // Attempt to connect to wallet
       try {
         provider.connect()
-          .then((_result) => {
+          .then((_result: any) => {
             setAccounts(provider.accounts);
             setChainId(provider.chainId);
           })
-          .catch((err) => {
+          .catch((err: any) => {
             setError(`Connection error: ${err.message}`);
           });
       } catch (err) {
@@ -99,7 +91,7 @@ export default function WalletConnect() {
       // Disconnect wallet
       try {
         provider.disconnect()
-          .catch((err) => {
+          .catch((err: any) => {
             setError(`Disconnection error: ${err.message}`);
           });
       } catch (err) {

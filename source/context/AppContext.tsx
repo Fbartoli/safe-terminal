@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useState } from 'react';
 import { PublicClient, createPublicClient, http, isAddress } from 'viem';
+import { provider } from '../cli.js';
 
 // Define the state shape
 interface AppState {
@@ -245,7 +246,6 @@ export function useWalletConnection() {
   // Import the provider from WalletConnect component
   useEffect(() => {
     // Dynamic import to avoid circular dependency
-    import('../components/WalletConnect.js').then(({ provider }) => {
       const updateConnectionState = () => {
         setIsWalletConnected(provider.connected);
         setConnectedAddress(provider.accounts[0] || null);
@@ -264,7 +264,6 @@ export function useWalletConnection() {
         provider.removeListener('disconnect', updateConnectionState);
         provider.removeListener('accountsChanged', updateConnectionState);
       };
-    });
   }, []);
   
   return {

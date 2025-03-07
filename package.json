@@ -26,6 +26,7 @@
 		"@safe-global/types-kit": "1.0.4",
 		"@types/qrcode-terminal": "^0.12.2",
 		"@walletconnect/ethereum-provider": "^2.19.0",
+		"dotenv": "^16.4.7",
 		"ethers": "^6.13.5",
 		"ink": "^4.4.1",
 		"ink-spinner": "^5.0.0",

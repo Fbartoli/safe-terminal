@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { isAddress, type Abi, type Address, encodeFunctionData, type AbiFunction as ViemAbiFunction } from 'viem';
 import { useBlockchain } from '../context/AppContext.js';
-import { provider } from './WalletConnect.js';
+import { provider } from '../cli.js';
 
 interface TransactionBuilderProps {
   onSubmit: (transaction: {

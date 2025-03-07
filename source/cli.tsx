@@ -1,8 +1,26 @@
 #!/usr/bin/env node
+import { config } from 'dotenv';
 import React from 'react';
 import {render} from 'ink';
 import meow from 'meow';
 import App from './app.js';
+import { EthereumProvider } from '@walletconnect/ethereum-provider';
+
+// Load environment variables from .env file
+config();
+
+console.log(process.env['WALLETCONNECT_PROJECT_ID'])
+export const provider = await EthereumProvider.init({
+	projectId: process.env['WALLETCONNECT_PROJECT_ID']!,
+	metadata: {
+	  name: 'Safe Terminal',
+	  description: 'Terminal interface for Safe contracts',
+	  url: 'https://github.com/fbartoli/safe-terminal',
+	  icons: ['https://avatars.githubusercontent.com/u/37784886']
+	},
+	showQrModal: false,
+	optionalChains: [1, 137, 8453],
+  });
 
 // Function to clear the terminal
 const clearTerminal = () => {
