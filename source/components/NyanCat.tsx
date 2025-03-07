@@ -29,7 +29,7 @@ export default function NyanCat() {
       setRainbowOffset(prev => (prev + 1) % rainbowColors.length);
     }, 150);
 
-    return () => clearInterval(timer);
+    return () => clearInterval(timer as NodeJS.Timeout);
   }, []);
 
   const renderRainbow = () => {

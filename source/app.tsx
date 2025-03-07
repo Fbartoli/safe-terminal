@@ -10,7 +10,7 @@ import TransactionBuilder from './components/TransactionBuilder.js';
 import WalletConnect from './components/WalletConnect.js';
 import { AppProvider, useTab, useAddress, useRpcUrl, useBlockchain, useWalletConnection } from './context/AppContext.js';
 import { SafeProvider, useSafe } from './context/SafeContext.js';
-
+import NyanCat from './components/NyanCat.js';
 interface AppProps {
 	initialAddress?: string;
 	initialRpcUrl?: string;
@@ -234,6 +234,7 @@ function AppContent() {
 			<TabBar activeTab={activeTab} tabs={tabs} />
 
 			{renderContent()}
+			<NyanCat />
 		</Box>
 	);
 }
