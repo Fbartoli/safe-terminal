@@ -45,7 +45,7 @@ export default function Settings({
               </Box>
             </>
           ) : (
-            <Text color="yellow">Not set</Text>
+            <Text color="yellow">Not set press <Text color="cyan">'a'</Text> to change</Text>
           )}
         </Box>
       </Box>
@@ -66,7 +66,7 @@ export default function Settings({
               </Box>
             </>
           ) : (
-            <Text color="yellow">Not set</Text>
+            <Text color="yellow">Not set press <Text color="cyan">'r'</Text> to change</Text>
           )}
         </Box>
       </Box>
