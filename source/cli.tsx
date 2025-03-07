@@ -19,7 +19,7 @@ export const provider = await EthereumProvider.init({
 	  icons: ['https://avatars.githubusercontent.com/u/37784886']
 	},
 	showQrModal: false,
-	optionalChains: [1, 137, 8453],
+	optionalChains: [0],
   });
 
 // Function to clear the terminal

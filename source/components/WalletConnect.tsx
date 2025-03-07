@@ -3,12 +3,6 @@ import { Box, Text, useInput } from 'ink';
 import { provider } from '../cli.js';
 import qrcode from 'qrcode-terminal';
 
-// Debug logging
-// Initialize the WalletConnect provider
-
-
-  
-
 export default function WalletConnect() {
   const [qrCode, setQrCode] = useState<string>('');
   const [connected, setConnected] = useState(false);
