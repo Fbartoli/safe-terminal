@@ -20,21 +20,65 @@ export const provider = await EthereumProvider.init({
 	},
 	showQrModal: false,
 	optionalChains: [0],
-  });
+});
 
-// Function to clear the terminal
-const clearTerminal = () => {
-	// Clear the terminal using ANSI escape codes
-	// This works on most terminals
-	process.stdout.write('\x1Bc');
-	
-	// Alternative methods for different environments
-	// process.stdout.write('\u001b[2J\u001b[0;0H'); // Another common method
-	// console.clear(); // Node.js method, but doesn't work in all environments
+// Enhanced terminal management
+const setupTerminal = () => {
+  // Enable alternative buffer
+  process.stdout.write('\x1b[?1049h');
+  
+  // Save current terminal settings
+  process.stdout.write('\x1b7');
+  
+  // Hide cursor
+  process.stdout.write('\x1b[?25l');
+  
+  // Clear screen and move to top-left
+  process.stdout.write('\x1b[2J\x1b[0;0H');
+  
+  // Disable line wrapping
+  process.stdout.write('\x1b[?7l');
+  
+  // Disable mouse events
+  process.stdout.write('\x1b[?1000l'); // Disable mouse click tracking
+  process.stdout.write('\x1b[?1002l'); // Disable mouse motion tracking
+  process.stdout.write('\x1b[?1003l'); // Disable all mouse tracking
+  process.stdout.write('\x1b[?1015l'); // Disable urxvt mouse mode
+  process.stdout.write('\x1b[?1006l'); // Disable SGR mouse mode
 };
 
-// Clear the terminal before starting
-clearTerminal();
+const restoreTerminal = () => {
+  // Enable mouse events (restore default state)
+  process.stdout.write('\x1b[?1000l');
+  process.stdout.write('\x1b[?1002l');
+  process.stdout.write('\x1b[?1003l');
+  process.stdout.write('\x1b[?1015l');
+  process.stdout.write('\x1b[?1006l');
+  
+  // Show cursor
+  process.stdout.write('\x1b[?25h');
+  
+  // Enable line wrapping
+  process.stdout.write('\x1b[?7h');
+  
+  // Restore cursor position
+  process.stdout.write('\x1b8');
+  
+  // Restore original buffer
+  process.stdout.write('\x1b[?1049l');
+};
+
+// Handle terminal resize
+const handleResize = () => {
+  // Clear screen and move to top-left
+  process.stdout.write('\x1b[2J\x1b[0;0H');
+};
+
+// Setup terminal
+setupTerminal();
+
+// Handle window resize
+process.stdout.on('resize', handleResize);
 
 const cli = meow(
 	`
@@ -73,15 +117,38 @@ const cli = meow(
 	},
 );
 
+let isExiting = false;
+
 // Handle process termination gracefully
+const cleanup = () => {
+  if (isExiting) return; // Prevent multiple cleanup attempts
+  isExiting = true;
+
+  // Restore terminal settings
+  restoreTerminal();
+
+  // Force exit immediately
+  process.exit(0);
+};
+
+// Register cleanup handlers with higher priority
 process.on('SIGINT', () => {
-	process.exit(0);
+  console.log('Exiting...');
+  cleanup();
 });
+
+process.on('SIGTERM', cleanup);
+process.on('exit', cleanup);
 
 // Start the application
 const {waitUntilExit} = render(<App initialAddress={cli.flags.address} initialRpcUrl={cli.flags.rpcUrl} />, {
 	debug: cli.flags.debug,
+  exitOnCtrlC: true, // Let Ink handle Ctrl+C
 });
 
 // Keep the process running until the app exits
-await waitUntilExit();
+try {
+  await waitUntilExit();
+} finally {
+  cleanup();
+}
