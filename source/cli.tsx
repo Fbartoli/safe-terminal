@@ -39,90 +39,68 @@ export const provider = await EthereumProvider.init({
 
 // Enhanced terminal management
 const setupTerminal = () => {
-  // Enable alternative buffer
-  process.stdout.write('\x1b[?1049h');
+  // Enable raw mode
+  process.stdin.setRawMode(true);
+  process.stdin.resume();
+  process.stdin.setEncoding('utf8');
   
-  // Save current terminal settings
-  process.stdout.write('\x1b7');
+  // Enable alternative buffer and save settings
+  process.stdout.write('\x1b[?1049h\x1b7');
+  
+  // Clear entire screen and scrollback buffer
+  process.stdout.write('\x1b[2J\x1b[3J');
+  
+  // Move cursor to top
+  process.stdout.write('\x1b[H');
   
   // Hide cursor
   process.stdout.write('\x1b[?25l');
-  
-  // Clear screen and move to top-left
-  process.stdout.write('\x1b[2J\x1b[0;0H');
-  
-  // Enable focus events if supported
-  process.stdout.write('\x1b[?1004h');
   
   // Set title if not in tmux/screen
   if (!terminalCapabilities.isTmux && !terminalCapabilities.isScreen) {
     process.stdout.write('\x1b]0;Safe Terminal\x07');
   }
-  
-  // Enable bracketed paste mode
-  process.stdout.write('\x1b[?2004h');
-  
-  // Set cursor style to block
-  process.stdout.write('\x1b[2 q');
-  
-  // Disable line wrapping
-  process.stdout.write('\x1b[?7l');
-  
-  // Optimize terminal performance
-  process.stdout.write('\x1b[?47l'); // Disable alternate screen buffer switching
-  process.stdout.write('\x1b[?9l');  // Disable X10 mouse mode
-  process.stdout.write('\x1b[?1000l'); // Disable mouse click tracking
-  process.stdout.write('\x1b[?1002l'); // Disable mouse motion tracking
-  process.stdout.write('\x1b[?1003l'); // Disable all mouse tracking
-  process.stdout.write('\x1b[?1015l'); // Disable urxvt mouse mode
-  process.stdout.write('\x1b[?1006l'); // Disable SGR mouse mode
-  
-  // Enable synchronized output if in tmux
-  if (terminalCapabilities.isTmux) {
-    process.stdout.write('\x1bPtmux;\\x1b[>Sm\x1b\\');
-  }
 };
 
 const restoreTerminal = () => {
-  // Disable focus events
-  process.stdout.write('\x1b[?1004l');
-  
-  // Disable bracketed paste mode
-  process.stdout.write('\x1b[?2004l');
-  
-  // Restore cursor style
-  process.stdout.write('\x1b[0 q');
-  
-  // Enable mouse events (restore default state)
-  process.stdout.write('\x1b[?1000l');
-  process.stdout.write('\x1b[?1002l');
-  process.stdout.write('\x1b[?1003l');
-  process.stdout.write('\x1b[?1015l');
-  process.stdout.write('\x1b[?1006l');
+  // Disable raw mode
+  process.stdin.setRawMode(false);
+  process.stdin.pause();
   
   // Show cursor
   process.stdout.write('\x1b[?25h');
   
-  // Enable line wrapping
-  process.stdout.write('\x1b[?7h');
+  // Clear entire screen and scrollback buffer
+  process.stdout.write('\x1b[2J\x1b[3J');
   
-  // Clear tmux synchronized output if needed
-  if (terminalCapabilities.isTmux) {
-    process.stdout.write('\x1bPtmux;\\x1b[>rm\x1b\\');
+  // Move cursor to home position
+  process.stdout.write('\x1b[H');
+  
+  // Switch back to main buffer and clear it
+  process.stdout.write('\x1b[?1049l\x1b[H\x1b[2J');
+  
+  // Clear one more time to ensure clean exit
+  console.clear();
+};
+
+// Handle input events to prevent scrolling
+const handleInput = (chunk: Buffer | string) => {
+  // Ignore scroll events and arrow keys
+  if (chunk === '\x1b[A' || chunk === '\x1b[B' || // Up/Down arrows
+      chunk === '\x1b[5~' || chunk === '\x1b[6~' || // Page Up/Down
+      chunk === '\x1b[1;5A' || chunk === '\x1b[1;5B' || // Ctrl+Up/Down
+      chunk === '\x1b[1;2A' || chunk === '\x1b[1;2B') { // Shift+Up/Down
+    return;
   }
   
-  // Restore cursor position
-  process.stdout.write('\x1b8');
-  
-  // Clear screen before restoring buffer
-  process.stdout.write('\x1b[2J');
-  
-  // Restore original buffer
-  process.stdout.write('\x1b[?1049l');
-  
-  // Clear screen after buffer restore
-  process.stdout.write('\x1b[2J');
+  // Handle Ctrl+C
+  if (chunk === '\x03') {
+    cleanup();
+  }
 };
+
+// Setup input handler
+process.stdin.on('data', handleInput);
 
 // Enhanced resize handler
 const handleResize = () => {
@@ -130,8 +108,8 @@ const handleResize = () => {
   terminalCapabilities.columns = process.stdout.columns || 80;
   terminalCapabilities.rows = process.stdout.rows || 24;
   
-  // Clear screen and move to top-left
-  process.stdout.write('\x1b[2J\x1b[0;0H');
+  // Clear screen and move to top
+  process.stdout.write('\x1b[2J\x1b[H');
   
   // Emit custom resize event with dimensions
   terminalEvents.emit('resize', {
