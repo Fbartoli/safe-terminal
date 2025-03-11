@@ -101,7 +101,6 @@ Examples
 - Press `3` to access WalletConnect
 - Press `4` to access Settings
 - Press `r` to refresh Safe information
-- Press `q` to quit the application
 
 ## Development
 
