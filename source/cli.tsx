@@ -4,7 +4,6 @@ import React from 'react';
 import {render} from 'ink';
 import meow from 'meow';
 import App from './app.js';
-import { EthereumProvider } from '@walletconnect/ethereum-provider';
 import { EventEmitter } from 'events';
 
 // Load environment variables from .env file
@@ -23,19 +22,6 @@ const terminalCapabilities = {
   isTmux: Boolean(process.env['TMUX']),
   isScreen: Boolean(process.env['STY'])
 };
-
-console.log(process.env['WALLETCONNECT_PROJECT_ID'])
-export const provider = await EthereumProvider.init({
-	projectId: process.env['WALLETCONNECT_PROJECT_ID']!,
-	metadata: {
-	  name: 'Safe Terminal',
-	  description: 'Terminal interface for Safe contracts',
-	  url: 'https://github.com/fbartoli/safe-terminal',
-	  icons: ['https://avatars.githubusercontent.com/u/37784886']
-	},
-	showQrModal: false,
-	optionalChains: [0],
-});
 
 // Enhanced terminal management
 const setupTerminal = () => {
@@ -56,6 +42,16 @@ const setupTerminal = () => {
   // Hide cursor
   process.stdout.write('\x1b[?25l');
   
+  // Disable scrolling
+  process.stdout.write('\x1b[?1007l'); // Disable alternate screen scroll
+  process.stdout.write('\x1b[r'); // Reset scrolling region
+  
+  // Disable mouse reporting/tracking but capture events to prevent scrolling
+  process.stdout.write('\x1b[?1000h'); // Enable mouse tracking
+  process.stdout.write('\x1b[?1002h'); // Enable mouse motion events
+  process.stdout.write('\x1b[?1003h'); // Enable all mouse events
+  process.stdout.write('\x1b[?1006h'); // Enable SGR mouse mode
+  
   // Set title if not in tmux/screen
   if (!terminalCapabilities.isTmux && !terminalCapabilities.isScreen) {
     process.stdout.write('\x1b]0;Safe Terminal\x07');
@@ -69,6 +65,15 @@ const restoreTerminal = () => {
   
   // Show cursor
   process.stdout.write('\x1b[?25h');
+  
+  // Re-enable scrolling
+  process.stdout.write('\x1b[?1007h');
+  
+  // Disable mouse tracking
+  process.stdout.write('\x1b[?1000l');
+  process.stdout.write('\x1b[?1002l');
+  process.stdout.write('\x1b[?1003l');
+  process.stdout.write('\x1b[?1006l');
   
   // Clear entire screen and scrollback buffer
   process.stdout.write('\x1b[2J\x1b[3J');
@@ -85,11 +90,35 @@ const restoreTerminal = () => {
 
 // Handle input events to prevent scrolling
 const handleInput = (chunk: Buffer | string) => {
+  // Handle mouse events to prevent scrolling
+  if (chunk[0] === 0x1b && chunk[1] === 0x5b && chunk[2] === 0x4d) {
+    // X10 mouse encoding, prevent default
+    return;
+  }
+  
+  if (chunk[0] === 0x1b && chunk[1] === 0x5b && chunk[2] === 0x3c) {
+    // SGR mouse encoding, prevent default
+    return;
+  }
+  
   // Ignore scroll events and arrow keys
   if (chunk === '\x1b[A' || chunk === '\x1b[B' || // Up/Down arrows
+      chunk === '\x1b[C' || chunk === '\x1b[D' || // Left/Right arrows
       chunk === '\x1b[5~' || chunk === '\x1b[6~' || // Page Up/Down
       chunk === '\x1b[1;5A' || chunk === '\x1b[1;5B' || // Ctrl+Up/Down
-      chunk === '\x1b[1;2A' || chunk === '\x1b[1;2B') { // Shift+Up/Down
+      chunk === '\x1b[1;5C' || chunk === '\x1b[1;5D' || // Ctrl+Left/Right
+      chunk === '\x1b[1;2A' || chunk === '\x1b[1;2B' || // Shift+Up/Down
+      chunk === '\x1b[1;2C' || chunk === '\x1b[1;2D' || // Shift+Left/Right
+      chunk === '\x1bOP' || chunk === '\x1bOQ' || // F1/F2
+      chunk === '\x1bOR' || chunk === '\x1bOS' || // F3/F4
+      chunk === '\x1b[15~' || chunk === '\x1b[17~' || // F5/F6
+      chunk === '\x1b[18~' || chunk === '\x1b[19~' || // F7/F8
+      chunk === '\x1b[20~' || chunk === '\x1b[21~' || // F9/F10
+      chunk === '\x1b[23~' || chunk === '\x1b[24~' || // F11/F12
+      chunk === '\x1b\x1b' || // ESC
+      chunk === '\r' || // Return
+      chunk === '\n' || // Newline
+      chunk === '\t') { // Tab
     return;
   }
   

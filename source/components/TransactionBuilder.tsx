@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { isAddress, type Abi, type Address, encodeFunctionData, type AbiFunction as ViemAbiFunction } from 'viem';
-import { useBlockchain } from '../context/AppContext.js';
-import { provider } from '../cli.js';
+import { useBlockchain, useWalletConnection } from '../context/AppContext.js';
 
 interface TransactionBuilderProps {
   onSubmit: (transaction: {
@@ -21,6 +20,7 @@ type WriteFunction = ViemAbiFunction & {
 
 export default function TransactionBuilder({ onSubmit }: TransactionBuilderProps) {
   const { publicClient } = useBlockchain();
+  const { isWalletConnected } = useWalletConnection();
   const [step, setStep] = useState<Step>('contract');
   const [contractAddress, setContractAddress] = useState('');
   const [abiString, setAbiString] = useState('');
@@ -32,33 +32,7 @@ export default function TransactionBuilder({ onSubmit }: TransactionBuilderProps
   const [isPasting, setIsPasting] = useState(false);
   const pasteTimeoutRef = useRef<NodeJS.Timeout>();
   const pasteBufferRef = useRef('');
-  const [connected, setConnected] = useState(false);
 
-  // Check if wallet is connected
-  useEffect(() => {
-    const checkConnection = () => {
-      setConnected(provider.connected);
-    };
-
-    checkConnection();
-    
-    // Listen for connection changes
-    const handleConnect = () => {
-      setConnected(true);
-    };
-    
-    const handleDisconnect = () => {
-      setConnected(false);
-    };
-    
-    provider.on('connect', handleConnect);
-    provider.on('disconnect', handleDisconnect);
-    
-    return () => {
-      provider.removeListener('connect', handleConnect);
-      provider.removeListener('disconnect', handleDisconnect);
-    };
-  }, []);
 
   // Filter write functions from ABI
   useEffect(() => {
@@ -221,7 +195,7 @@ export default function TransactionBuilder({ onSubmit }: TransactionBuilderProps
       if (key.return) {
         try {
           if (!publicClient) throw new Error('Public client not available');
-          if (!connected) throw new Error('Wallet not connected. Please connect your wallet first.');
+          if (!isWalletConnected) throw new Error('Wallet not connected. Please connect your wallet first.');
 
           const args = parameters.map((param, index) => {
             const input = currentFunction.inputs[index];
@@ -368,7 +342,7 @@ export default function TransactionBuilder({ onSubmit }: TransactionBuilderProps
         )}
       </Box>
       
-      {!connected ? (
+      {!isWalletConnected ? (
         <Box flexDirection="column" padding={1} borderStyle="round" borderColor="yellow">
           <Text color="yellow">⚠️ Wallet not connected</Text>
           <Text>Go to the WalletConnect tab to connect your wallet first.</Text>

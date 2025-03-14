@@ -1,5 +1,5 @@
-import React, { useMemo, useEffect } from 'react';
-import { Box, Text, useInput, useStdout } from 'ink';
+import React, { useMemo } from 'react';
+import { Box, Text, useInput } from 'ink';
 import { type Address } from 'viem';
 import AddressInput from './components/AddressInput.js';
 import RpcUrlInput from './components/RpcUrlInput.js';
@@ -10,58 +10,20 @@ import TransactionBuilder from './components/TransactionBuilder.js';
 import WalletConnect from './components/WalletConnect.js';
 import { AppProvider, useTab, useAddress, useRpcUrl, useBlockchain, useWalletConnection } from './context/AppContext.js';
 import { SafeProvider, useSafe } from './context/SafeContext.js';
-// import NyanCat from './components/NyanCat.js';
 interface AppProps {
 	initialAddress?: string;
 	initialRpcUrl?: string;
 }
 
-// Debounce function
-
-// Optimized terminal clear function
-
 function AppContent() {
-	const { stdout, write } = useStdout();
 	const { activeTab, setActiveTab, tabs } = useTab();
 	const { address, isSettingAddress, setAddress, startChangingAddress } = useAddress();
 	const { rpcUrl, chainId, isSettingRpcUrl, setRpcUrl, startChangingRpcUrl } = useRpcUrl();
 	const { currentBlock, isPolling } = useBlockchain();
 	const { refetch } = useSafe();
-	const { connectedAddress, isWalletConnected } = useWalletConnection();
+	const { connectedAddress, provider } = useWalletConnection();
 
-	// Handle terminal resize
-	useEffect(() => {
-		const handleResize = () => {
-			// Get terminal dimensions
-			const { columns } = stdout;
-			
-			// Clear the terminal and reset cursor
-			write('\x1b[2J\x1b[0;0H');
-			
-			// Set maximum content width
-			
-			// Adjust content layout based on terminal size
-			if (columns < 80) {
-				// Compact layout for small terminals
-				write('\x1b[?7h'); // Enable line wrapping
-			} else {
-				// Full layout for larger terminals
-				write('\x1b[?7l'); // Disable line wrapping
-			}
-		};
-
-		// Initial setup
-		handleResize();
-
-		// Listen for resize events
-		stdout.on('resize', handleResize);
-
-		return () => {
-			stdout.off('resize', handleResize);
-			// Restore terminal settings
-			write('\x1b[?7h'); // Enable line wrapping
-		};
-	}, [stdout, write]);
+	const isConnected = provider?.connected || false;
 
 	// Add keyboard navigation
 	useInput((input) => {
@@ -125,7 +87,7 @@ function AppContent() {
 							</Box>
 
 							<Box>
-								{isWalletConnected && connectedAddress && (
+								{isConnected && connectedAddress && (
 									<Box>
 										<Text>Wallet: </Text>
 										<Text color="green">{connectedAddress.slice(0, 6)}...{connectedAddress.slice(-4)}</Text>
@@ -148,7 +110,7 @@ function AppContent() {
 				</Box>
 			</Box>
 		);
-	}, [activeTab, address, chainId, connectedAddress, currentBlock, isPolling, isSettingAddress, isSettingRpcUrl, isWalletConnected, rpcUrl, tabs, handleTransactionSubmit]);
+	}, [activeTab, address, chainId, connectedAddress, currentBlock, isPolling, isSettingAddress, isSettingRpcUrl, provider, rpcUrl, tabs, handleTransactionSubmit]);
 
 	return content;
 }

@@ -19,13 +19,14 @@
 		"dist"
 	],
 	"dependencies": {
-		"@reown/appkit": "^1.6.9",
+		"@reown/appkit": "^1.7.0",
 		"@safe-global/api-kit": "^2.5.11",
 		"@safe-global/protocol-kit": "^5.2.4",
 		"@safe-global/sdk-starter-kit": "^1.1.7",
 		"@safe-global/types-kit": "1.0.4",
 		"@types/qrcode-terminal": "^0.12.2",
-		"@walletconnect/ethereum-provider": "^2.19.0",
+		"@walletconnect/ethereum-provider": "^2.19.1",
+		"clipboardy": "^4.0.0",
 		"dotenv": "^16.4.7",
 		"ethers": "^6.13.5",
 		"ink": "^4.4.1",
@@ -34,11 +35,12 @@
 		"qrcode-terminal": "^0.12.0",
 		"react": "^18.3.1",
 		"react-devtools-core": "^6.1.1",
-		"viem": "^2.23.9",
+		"viem": "^2.23.10",
 		"ws": "^8.18.1"
 	},
 	"devDependencies": {
 		"@sindresorhus/tsconfig": "^3.0.1",
+		"@types/clipboardy": "^2.0.4",
 		"@types/react": "^18.3.18",
 		"@vdemedes/prettier-config": "^2.0.1",
 		"ava": "^5.3.1",
@@ -49,7 +51,7 @@
 		"ink-testing-library": "^3.0.0",
 		"nodemon": "^3.1.9",
 		"prettier": "^2.8.8",
-		"prisma": "^6.4.1",
+		"prisma": "^6.5.0",
 		"ts-node": "^10.9.2",
 		"typescript": "^5.8.2",
 		"xo": "^0.53.1"

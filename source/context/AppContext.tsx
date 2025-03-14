@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useState } from 'react';
 import { PublicClient, createPublicClient, http, isAddress } from 'viem';
-import { provider } from '../cli.js';
+import { EthereumProvider } from '@walletconnect/ethereum-provider';
+
+// Create a proper type for the EthereumProvider instance
+type WalletConnectProvider = Awaited<ReturnType<typeof EthereumProvider.init>>;
 
 // Define the state shape
 interface AppState {
@@ -14,6 +17,9 @@ interface AppState {
   isSettingRpcUrl: boolean;
   refreshKey: number;
   publicClient?: PublicClient;
+  provider?: WalletConnectProvider;
+  isWalletConnected: boolean;
+  connectedAddress: string | null;
 }
 
 // Initial state
@@ -27,7 +33,10 @@ const initialState: AppState = {
   isSettingAddress: false,
   isSettingRpcUrl: false,
   refreshKey: 0,
-  publicClient: undefined
+  publicClient: undefined,
+  provider: undefined,
+  isWalletConnected: false,
+  connectedAddress: null
 };
 
 // Define action types
@@ -42,6 +51,9 @@ type Action =
   | { type: 'SET_IS_SETTING_RPC_URL'; payload: boolean }
   | { type: 'INCREMENT_REFRESH_KEY' }
   | { type: 'SET_PUBLIC_CLIENT'; payload: PublicClient | undefined }
+  | { type: 'SET_PROVIDER'; payload: WalletConnectProvider | undefined }
+  | { type: 'SET_WALLET_CONNECTED'; payload: boolean }
+  | { type: 'SET_CONNECTED_ADDRESS'; payload: string | null }
   | { type: 'INITIALIZE'; payload: { address?: string; rpcUrl?: string } };
 
 // Reducer function
@@ -67,6 +79,12 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, refreshKey: state.refreshKey + 1 };
     case 'SET_PUBLIC_CLIENT':
       return { ...state, publicClient: action.payload };
+    case 'SET_PROVIDER':
+      return { ...state, provider: action.payload };
+    case 'SET_WALLET_CONNECTED':
+      return { ...state, isWalletConnected: action.payload };
+    case 'SET_CONNECTED_ADDRESS':
+      return { ...state, connectedAddress: action.payload };
     case 'INITIALIZE':
       const updates: Partial<AppState> = {};
       if (action.payload.address && isAddress(action.payload.address)) {
@@ -240,34 +258,103 @@ export function useBlockchain(): BlockchainState {
 
 // Add a custom hook for wallet connection
 export function useWalletConnection() {
-  const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const { state, dispatch } = useAppContext();
+  const [_isInitializing, setIsInitializing] = useState(false);
   
-  // Import the provider from WalletConnect component
+  // Check connection status when the hook is initialized
   useEffect(() => {
-    // Dynamic import to avoid circular dependency
-      const updateConnectionState = () => {
-        setIsWalletConnected(provider.connected);
-        setConnectedAddress(provider.accounts[0] || null);
-      };
+    if (state.provider) {
+      dispatch({ type: 'SET_WALLET_CONNECTED', payload: state.provider.connected });
+      if (state.provider.connected && state.provider.accounts.length > 0) {
+        dispatch({ type: 'SET_CONNECTED_ADDRESS', payload: state.provider.accounts[0] || null });
+      }
+    }
+  }, [state.provider, dispatch]);
+  
+  // Initialize provider only when needed
+  const initializeProvider = async () => {
+    
+    try {
+      setIsInitializing(true);
       
-      // Initial state
-      updateConnectionState();
+      // Use the current chain ID from the client, fallback to 1 (Ethereum Mainnet) if not available
+      const chainId = state.chainId || 1;
       
-      // Listen for connection changes
-      provider.on('connect', updateConnectionState);
-      provider.on('disconnect', updateConnectionState);
-      provider.on('accountsChanged', updateConnectionState);
+      // Initialize the WalletConnect provider with current chain ID
+      const provider = await EthereumProvider.init({
+        projectId: process.env['WALLETCONNECT_PROJECT_ID']!,
+        metadata: {
+          name: 'Safe Terminal',
+          description: 'Terminal interface for Safe contracts',
+          url: 'https://github.com/fbartoli/safe-terminal',
+          icons: ['https://avatars.githubusercontent.com/u/37784886']
+        },
+        showQrModal: false,
+        optionalChains: [chainId], // Use current chain ID 
+      });
       
-      return () => {
-        provider.removeListener('connect', updateConnectionState);
-        provider.removeListener('disconnect', updateConnectionState);
-        provider.removeListener('accountsChanged', updateConnectionState);
-      };
-  }, []);
+      dispatch({ type: 'SET_PROVIDER', payload: provider });
+      
+      // Set up event listeners for the provider
+      provider.on('connect', () => {
+        dispatch({ type: 'SET_WALLET_CONNECTED', payload: provider.connected });
+        dispatch({ type: 'SET_CONNECTED_ADDRESS', payload: provider.accounts[0] || null });
+      });
+      
+      provider.on('disconnect', () => {
+        dispatch({ type: 'SET_WALLET_CONNECTED', payload: false });
+        dispatch({ type: 'SET_CONNECTED_ADDRESS', payload: null });
+      });
+      
+      provider.on('accountsChanged', () => {
+        dispatch({ type: 'SET_CONNECTED_ADDRESS', payload: provider.accounts[0] || null });
+      });
+      
+      return provider;
+    } catch (error) {
+      console.error('Failed to initialize WalletConnect provider:', error);
+      return undefined;
+    } finally {
+      setIsInitializing(false);
+    }
+  };
+  
+  // Connect to wallet
+  const connect = async () => {
+    try {
+      const provider = await initializeProvider();
+      if (!provider) {
+        throw new Error('Provider initialization failed');
+      }
+      await provider.connect();
+      dispatch({ type: 'SET_WALLET_CONNECTED', payload: true });
+      dispatch({ type: 'SET_CONNECTED_ADDRESS', payload: provider.accounts[0] || null });
+      return provider.accounts[0] || null;
+    } catch (error) {
+      console.error('Failed to connect wallet:', error);
+      return null;
+    }
+  };
+  
+  // Disconnect wallet
+  const disconnect = async () => {
+    try {
+      if (state.provider && state.provider.connected) {
+        await state.provider.disconnect();
+      }
+      dispatch({ type: 'SET_WALLET_CONNECTED', payload: false });
+      dispatch({ type: 'SET_CONNECTED_ADDRESS', payload: null });
+    } catch (error) {
+      console.error('Failed to disconnect wallet:', error);
+    }
+  };
   
   return {
-    connectedAddress,
-    isWalletConnected
+    provider: state.provider,
+    connectedAddress: state.connectedAddress,
+    isWalletConnected: state.isWalletConnected,
+    connect,
+    disconnect,
+    initializeProvider
   };
 } 
