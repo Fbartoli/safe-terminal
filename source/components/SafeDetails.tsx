@@ -1,11 +1,11 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import Spinner from 'ink-spinner';
-import { useSafe } from '../context/SafeContext.js';
+import { useSafeDetails } from '../hooks/useSafeData.js';
 import { useAddress } from '../context/AppContext.js';
 
 export default function SafeDetails() {
-  const { safeInfo, isLoading, error } = useSafe();
+  const { data: safeInfo, isLoading, error } = useSafeDetails();
   const { address } = useAddress();
 
   if (isLoading) {
@@ -20,7 +20,7 @@ export default function SafeDetails() {
   if (error) {
     return (
       <Box flexDirection="column">
-        <Text color="red">Error: {error}</Text>
+        <Text color="red">Error: {error instanceof Error ? error.message : 'Unknown error'}</Text>
         <Box marginTop={1}>
           <Text>Press </Text>
           <Text color="cyan" underline>r</Text>

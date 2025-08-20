@@ -8,8 +8,10 @@ import TabBar from './components/TabBar.js';
 import SafeDetails from './components/SafeDetails.js';
 import TransactionBuilder from './components/TransactionBuilder.js';
 import WalletConnect from './components/WalletConnect.js';
-import { AppProvider, useTab, useAddress, useRpcUrl, useBlockchain, useWalletConnection } from './context/AppContext.js';
-import { SafeProvider, useSafe } from './context/SafeContext.js';
+import { AppProvider, useTab, useAddress, useRpcUrl, useWalletConnection } from './context/AppContext.js';
+import { QueryProvider } from './context/QueryProvider.js';
+import { useBlockNumber, useChainId, useRpcHealth } from './hooks/useBlockchain.js';
+import { useInvalidateSafe } from './hooks/useSafeData.js';
 interface AppProps {
 	initialAddress?: string;
 	initialRpcUrl?: string;
@@ -18,10 +20,14 @@ interface AppProps {
 function AppContent() {
 	const { activeTab, setActiveTab, tabs } = useTab();
 	const { address, isSettingAddress, setAddress, startChangingAddress } = useAddress();
-	const { rpcUrl, chainId, isSettingRpcUrl, setRpcUrl, startChangingRpcUrl } = useRpcUrl();
-	const { currentBlock, isPolling } = useBlockchain();
-	const { refetch } = useSafe();
+	const { rpcUrl, isSettingRpcUrl, setRpcUrl, startChangingRpcUrl } = useRpcUrl();
 	const { connectedAddress, provider } = useWalletConnection();
+	
+	// TanStack Query hooks for server state
+	const { data: chainId } = useChainId();
+	const { data: currentBlock } = useBlockNumber();
+	const { data: rpcHealth } = useRpcHealth();
+	const invalidateSafe = useInvalidateSafe();
 
 	const isConnected = provider?.connected || false;
 
@@ -37,7 +43,7 @@ function AppContent() {
 			} else if (input === '4') {
 				setActiveTab(3); // Settings
 			} else if (input === 'r') {
-				refetch();
+				invalidateSafe(); // Refresh Safe data using TanStack Query
 			}
 		}
 	});
@@ -72,18 +78,18 @@ function AppContent() {
 								<Box>
 									<Text>Current Block: </Text>
 									{currentBlock ? (
-										<Text color="cyan">{currentBlock}</Text>
+										<Text color="cyan">{currentBlock?.toString()}</Text>
 									) : (
 										<Text color="gray">Loading...</Text>
 									)}
 								</Box>
 
-								{isPolling && (
-									<Box marginLeft={4}>
-										<Text color="green">●</Text>
-										<Text> Real-time updates</Text>
-									</Box>
-								)}
+												{rpcHealth && (
+					<Box marginLeft={4}>
+						<Text color={rpcHealth.healthy ? "green" : "red"}>●</Text>
+						<Text> RPC {rpcHealth.healthy ? `(${rpcHealth.latency}ms)` : "Unhealthy"}</Text>
+					</Box>
+				)}
 							</Box>
 
 							<Box>
@@ -110,17 +116,17 @@ function AppContent() {
 				</Box>
 			</Box>
 		);
-	}, [activeTab, address, chainId, connectedAddress, currentBlock, isPolling, isSettingAddress, isSettingRpcUrl, provider, rpcUrl, tabs, handleTransactionSubmit]);
+	}, [activeTab, address, chainId, connectedAddress, currentBlock, rpcHealth, isSettingAddress, isSettingRpcUrl, provider, rpcUrl, tabs, handleTransactionSubmit]);
 
 	return content;
 }
 
 export default function App({ initialAddress, initialRpcUrl }: AppProps) {
 	return (
-		<AppProvider initialAddress={initialAddress} initialRpcUrl={initialRpcUrl}>
-			<SafeProvider>
+		<QueryProvider>
+			<AppProvider initialAddress={initialAddress} initialRpcUrl={initialRpcUrl}>
 				<AppContent />
-			</SafeProvider>
-		</AppProvider>
+			</AppProvider>
+		</QueryProvider>
 	);
 }

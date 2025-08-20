@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Box, Text, useInput } from 'ink';
 import Spinner from 'ink-spinner';
 import { createPublicClient, http } from 'viem';
@@ -14,65 +14,98 @@ export default function RpcUrlInput({ onSubmit, defaultUrl = '' }: RpcUrlInputPr
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [chainId, setChainId] = useState<number | null>(null);
+  const [isPasting, setIsPasting] = useState(false);
+  const pasteTimeoutRef = useRef<NodeJS.Timeout>();
+  const pasteBufferRef = useRef('');
 
-  useInput(async (input, key) => {
+  const handleUrlSubmit = async (urlToSubmit: string) => {
+    if (urlToSubmit.trim() === '') {
+      setError('RPC URL cannot be empty');
+      return;
+    }
+
+    // Basic URL validation
+    try {
+      new URL(urlToSubmit);
+      setError('');
+      setLoading(true);
+      
+      try {
+        const client = createPublicClient({
+          transport: http(urlToSubmit),
+        });
+        
+        // Set a timeout for the RPC connection test
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Connection timeout')), 10000);
+        });
+        
+        // Race between the actual request and the timeout
+        const chainId = await Promise.race([
+          client.getChainId(),
+          timeoutPromise
+        ]) as number;
+        
+        setChainId(chainId);
+        setLoading(false);
+        setSubmitted(true);
+        onSubmit(urlToSubmit, chainId);
+      } catch (e) {
+        setLoading(false);
+        setError(`Failed to connect to RPC: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      }
+    } catch (e) {
+      setError('Invalid URL format');
+    }
+  };
+
+  useInput((input, key) => {
     if (submitted || loading) return;
 
-    if (input.length > 1) {
-      setUrl(input);
-      if (error) setError('');
-    }
-
+    // Handle Enter key
     if (key.return) {
-      if (url.trim() === '') {
-        setError('RPC URL cannot be empty');
+      if (isPasting) {
+        // If we're still pasting, wait for the paste to complete
         return;
       }
+      handleUrlSubmit(url);
+      return;
+    }
 
-      // Basic URL validation
-      try {
-        new URL(url);
-        setError('');
-        setLoading(true);
-        
-        try {
-          const client = createPublicClient({
-            transport: http(url),
-          });
-          
-          // Set a timeout for the RPC connection test
-          const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Connection timeout')), 10000);
-          });
-          
-          // Race between the actual request and the timeout
-          const chainId = await Promise.race([
-            client.getChainId(),
-            timeoutPromise
-          ]) as number;
-          
-          setChainId(chainId);
-          setLoading(false);
-          setSubmitted(true);
-          onSubmit(url, chainId);
-        } catch (e) {
-          setLoading(false);
-          setError(`Failed to connect to RPC: ${e instanceof Error ? e.message : 'Unknown error'}`);
-        }
-      } catch (e) {
-        setError('Invalid URL format');
+    // Handle backspace/delete
+    if (key.backspace || key.delete) {
+      if (!isPasting) {
+        setUrl(prev => prev.slice(0, -1));
+        if (error) setError('');
       }
       return;
     }
 
-    if (key.backspace || key.delete) {
-      setUrl(prev => prev.slice(0, -1));
-      if (error) setError('');
+    // Handle paste operation - accumulate multi-character input
+    if (input.length > 1) {
+      // Start or continue paste operation
+      setIsPasting(true);
+      pasteBufferRef.current += input;
+
+      // Clear any existing timeout
+      if (pasteTimeoutRef.current) {
+        clearTimeout(pasteTimeoutRef.current);
+      }
+
+      // Set a new timeout to process the paste buffer
+      pasteTimeoutRef.current = setTimeout(() => {
+        setIsPasting(false);
+        const cleanedContent = pasteBufferRef.current.trim();
+        setUrl(cleanedContent);
+        pasteBufferRef.current = ''; // Clear the buffer
+        if (error) setError('');
+      }, 50); // Wait 50ms for more input
+
       return;
     }
 
-    // Allow most characters for URL input
-    if (!key.ctrl && !key.meta && input.length === 1) {
+    // Handle single character input (typing)
+    if (input.length === 1 && !key.ctrl && !key.meta && !isPasting) {
       setUrl(prev => prev + input);
       if (error) setError('');
     }
